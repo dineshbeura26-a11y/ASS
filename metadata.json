@@ -1,0 +1,6 @@
+{
+  "name": "FinanceFlow - Personal Finance & Expense Tracker",
+  "description": "Comprehensive personal finance studio with real-time expense tracking, interactive cash flow pipeline, budget health analytics, and transaction management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
