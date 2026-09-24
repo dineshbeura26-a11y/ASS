@@ -1,383 +1,312 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Header, AddTransactionModal } from './components/HeaderAndModal';
-import { VisualCashFlowCanvas } from './components/CashFlowCanvas';
-import {
-  OverviewDashboard,
-  TransactionsView,
-  BudgetsView,
-  AccountsView,
-  AnalyticsView,
-} from './components/Views';
-import { CodeStudioView } from './components/CodeStudioView';
-import {
-  Account,
-  Budget,
-  CurrencyCode,
-  FinancialGoal,
-  INITIAL_ACCOUNTS,
-  INITIAL_BUDGETS,
-  INITIAL_GOALS,
-  INITIAL_TRANSACTIONS,
-  NotificationItem,
-  REALTIME_EVENT_TEMPLATES,
-  Transaction,
-} from './types';
-import { playTransactionSound } from './utils';
+import React, { useState } from 'react';
+import confetti from 'canvas-confetti';
+import { Header } from './components/Header';
+import { ScannerHero } from './components/ScannerHero';
+import { AuditDashboard } from './components/AuditDashboard';
+import { FeaturePillars } from './components/FeaturePillars';
+import { ArchitectCard } from './components/ArchitectCard';
+import { PythonEngineModal } from './components/PythonEngineModal';
+import { HistoryView } from './components/HistoryView';
+import { MonitorView } from './components/MonitorView';
+import { DiagnosticBreakdown } from './components/DiagnosticBreakdown';
+import { LoginPage } from './components/LoginPage';
+import { VoiceAssistantModal } from './components/VoiceAssistantModal';
+import { PRESET_AUDITS, generateDynamicAudit } from './data/presetAudits';
+import { AuditResult, UserProfile } from './types';
+import { Mic, Radio, Sparkles } from 'lucide-react';
 
 export function App() {
-  // Navigation active tab
-  const [activeTab, setActiveTab] = useState<
-    'overview' | 'canvas' | 'transactions' | 'budgets' | 'accounts' | 'analytics' | 'code'
-  >('overview');
-
-  // Persistence: Currency
-  const [currency, setCurrency] = useState<CurrencyCode>(() => {
-    const saved = localStorage.getItem('ff_currency');
-    return (saved as CurrencyCode) || 'USD';
-  });
-
-  // Persistence: Transactions
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    try {
-      const saved = localStorage.getItem('ff_transactions');
-      return saved ? JSON.parse(saved) : INITIAL_TRANSACTIONS;
-    } catch {
-      return INITIAL_TRANSACTIONS;
-    }
-  });
-
-  // Persistence: Accounts
-  const [accounts, setAccounts] = useState<Account[]>(() => {
-    try {
-      const saved = localStorage.getItem('ff_accounts');
-      return saved ? JSON.parse(saved) : INITIAL_ACCOUNTS;
-    } catch {
-      return INITIAL_ACCOUNTS;
-    }
-  });
-
-  // Persistence: Budgets
-  const [budgets, setBudgets] = useState<Budget[]>(() => {
-    try {
-      const saved = localStorage.getItem('ff_budgets');
-      return saved ? JSON.parse(saved) : INITIAL_BUDGETS;
-    } catch {
-      return INITIAL_BUDGETS;
-    }
-  });
-
-  // Persistence: Goals
-  const [goals, setGoals] = useState<FinancialGoal[]>(() => {
-    try {
-      const saved = localStorage.getItem('ff_goals');
-      return saved ? JSON.parse(saved) : INITIAL_GOALS;
-    } catch {
-      return INITIAL_GOALS;
-    }
-  });
-
-  // Real-time Event Streaming Simulator State
-  const [isRealtimeActive, setIsRealtimeActive] = useState<boolean>(true);
-  const [lastSimulatedTx, setLastSimulatedTx] = useState<Transaction | null>(null);
-
-  // Global UI Modals & Popovers
-  const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [showNotifications, setShowNotifications] = useState<boolean>(false);
-  const [notifications, setNotifications] = useState<NotificationItem[]>([
-    {
-      id: 'n-1',
-      title: 'Direct Deposit Cleared',
-      message: 'Anthropic Labs payroll +$5,400.00 posted to Main Checking.',
-      type: 'success',
-      timestamp: '2h ago',
-      read: false,
-    },
-    {
-      id: 'n-2',
-      title: 'Recurring Subscription',
-      message: 'Netflix 4K -$21.99 processed on Sapphire Reserve.',
-      type: 'info',
-      timestamp: '5h ago',
-      read: false,
-    },
+  const [currentTab, setCurrentTab] = useState<'scanner' | 'dashboard' | 'history' | 'monitor' | 'python' | 'architect' | 'auth'>('scanner');
+  const [activeUrl, setActiveUrl] = useState<string>('https://react.dev');
+  const [currentAudit, setCurrentAudit] = useState<AuditResult>(PRESET_AUDITS['react.dev']);
+  const [history, setHistory] = useState<AuditResult[]>([
+    PRESET_AUDITS['react.dev'],
+    PRESET_AUDITS['github.com'],
+    PRESET_AUDITS['wikipedia.org'],
+    PRESET_AUDITS['vercel.com']
   ]);
+  const [isScanning, setIsScanning] = useState<boolean>(false);
+  const [loadingStep, setLoadingStep] = useState<string>('');
+  const [isPythonModalOpen, setIsPythonModalOpen] = useState<boolean>(false);
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState<boolean>(false);
 
-  // Sync to LocalStorage on changes
-  useEffect(() => {
-    localStorage.setItem('ff_transactions', JSON.stringify(transactions));
-  }, [transactions]);
+  // Authenticated user state (Defaults to Dinesh Kumar Beura as Chief Architect)
+  const [currentUser, setCurrentUser] = useState<UserProfile>({
+    id: 'user-dinesh-001',
+    name: 'Dinesh Kumar Beura',
+    email: 'dineshbeura26@gmail.com',
+    role: 'Chief Architect',
+    company: 'Dinesh AI Enterprise Labs',
+    location: 'Bhubaneswar, Odisha, India',
+    isLoggedIn: true,
+    token: 'jwt_dinesh_ai_enterprise_2026_sec_99381',
+    tier: 'Enterprise 2026'
+  });
 
-  useEffect(() => {
-    localStorage.setItem('ff_accounts', JSON.stringify(accounts));
-  }, [accounts]);
+  const handleAnalyze = (url: string) => {
+    setActiveUrl(url);
+    setIsScanning(true);
 
-  useEffect(() => {
-    localStorage.setItem('ff_budgets', JSON.stringify(budgets));
-  }, [budgets]);
+    const steps = [
+      'Resolving DNS & Initiating TLS 1.3 Handshake...',
+      'Validating SSL Certificate & OWASP Security Headers...',
+      'Measuring TTFB & Core Web Vitals (LCP, FID, CLS)...',
+      'Detecting Frameworks, CDNs & Tech Stack Signatures...',
+      'Executing WCAG 2.1 AA Accessibility Validation...',
+      'Dinesh AI LLM generating optimization suggestions...'
+    ];
 
-  useEffect(() => {
-    localStorage.setItem('ff_goals', JSON.stringify(goals));
-  }, [goals]);
+    let currentStepIdx = 0;
+    setLoadingStep(steps[0]);
 
-  useEffect(() => {
-    localStorage.setItem('ff_currency', currency);
-  }, [currency]);
+    const stepInterval = setInterval(() => {
+      currentStepIdx++;
+      if (currentStepIdx < steps.length) {
+        setLoadingStep(steps[currentStepIdx]);
+      }
+    }, 280);
 
-  // Monthly Aggregates
-  const monthlyIncome = useMemo(() => {
-    return transactions.filter((t) => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-  }, [transactions]);
+    setTimeout(() => {
+      clearInterval(stepInterval);
+      const newAudit = generateDynamicAudit(url);
+      setCurrentAudit(newAudit);
+      setHistory(prev => [newAudit, ...prev.filter(h => h.domain !== newAudit.domain)]);
+      setIsScanning(false);
+      setCurrentTab('dashboard');
 
-  const monthlyExpense = useMemo(() => {
-    return transactions.filter((t) => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-  }, [transactions]);
-
-  // Action: Add new transaction & reconcile account balance
-  const handleAddTransaction = (newTx: Transaction) => {
-    setTransactions((prev) => [newTx, ...prev]);
-
-    // Update account balances
-    setAccounts((prevAccounts) =>
-      prevAccounts.map((acc) => {
-        if (acc.id === newTx.accountId) {
-          if (newTx.type === 'expense') {
-            return {
-              ...acc,
-              balance: acc.type === 'credit' ? acc.balance - newTx.amount : acc.balance - newTx.amount,
-            };
-          } else if (newTx.type === 'income') {
-            return { ...acc, balance: acc.balance + newTx.amount };
-          } else if (newTx.type === 'transfer') {
-            return { ...acc, balance: acc.balance - newTx.amount };
-          }
-        }
-        if (newTx.type === 'transfer' && acc.id === newTx.toAccountId) {
-          return { ...acc, balance: acc.balance + newTx.amount };
-        }
-        return acc;
-      })
-    );
-
-    // Audio chime
-    playTransactionSound(newTx.type === 'income' ? 'income' : 'expense');
-
-    // Add alert notification
-    setNotifications((prev) => [
-      {
-        id: `n-${Date.now()}`,
-        title: `${newTx.type === 'income' ? 'Incoming Payment' : 'New Expense'} Cleared`,
-        message: `${newTx.merchant} (${newTx.category}): $${newTx.amount.toFixed(2)}`,
-        type: newTx.type === 'income' ? 'success' : 'info',
-        timestamp: 'Just now',
-        read: false,
-      },
-      ...prev,
-    ]);
+      // Trigger celebration confetti
+      try {
+        confetti({
+          particleCount: 50,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#a855f7', '#6366f1', '#10b981', '#f59e0b']
+        });
+      } catch (e) {
+        // Safe fallback
+      }
+    }, 1800);
   };
 
-  // Action: Delete transaction & revert balance
-  const handleDeleteTransaction = (id: string) => {
-    const tx = transactions.find((t) => t.id === id);
-    if (!tx) return;
-
-    setTransactions((prev) => prev.filter((t) => t.id !== id));
-
-    // Revert account balance
-    setAccounts((prevAccounts) =>
-      prevAccounts.map((acc) => {
-        if (acc.id === tx.accountId) {
-          if (tx.type === 'expense') {
-            return { ...acc, balance: acc.balance + tx.amount };
-          } else if (tx.type === 'income') {
-            return { ...acc, balance: acc.balance - tx.amount };
-          } else if (tx.type === 'transfer') {
-            return { ...acc, balance: acc.balance + tx.amount };
-          }
-        }
-        if (tx.type === 'transfer' && acc.id === tx.toAccountId) {
-          return { ...acc, balance: acc.balance - tx.amount };
-        }
-        return acc;
-      })
-    );
+  const handleSelectHistoryItem = (item: AuditResult) => {
+    setCurrentAudit(item);
+    setActiveUrl(item.url);
+    setCurrentTab('dashboard');
   };
 
-  // Action: Import transactions from JSON
-  const handleImportTransactions = (imported: Transaction[]) => {
-    setTransactions((prev) => [...imported, ...prev]);
-    playTransactionSound('income');
+  const handleLogin = (user: UserProfile) => {
+    setCurrentUser(user);
   };
 
-  // Action: Update budget limit
-  const handleUpdateBudgetLimit = (budgetId: string, newLimit: number) => {
-    setBudgets((prev) =>
-      prev.map((b) => (b.id === budgetId ? { ...b, monthlyLimit: newLimit } : b))
-    );
+  const handleLogout = () => {
+    setCurrentUser({
+      id: 'guest',
+      name: 'Guest User',
+      email: '',
+      role: 'Guest',
+      isLoggedIn: false,
+      tier: 'Free'
+    });
   };
-
-  // Action: Create budget
-  const handleCreateBudget = (budget: Budget) => {
-    setBudgets((prev) => [...prev, budget]);
-  };
-
-  // Action: Update goal progress
-  const handleUpdateGoalProgress = (goalId: string, delta: number) => {
-    setGoals((prev) =>
-      prev.map((g) =>
-        g.id === goalId ? { ...g, currentAmount: Math.min(g.targetAmount, g.currentAmount + delta) } : g
-      )
-    );
-  };
-
-  // Action: Create goal
-  const handleCreateGoal = (goal: FinancialGoal) => {
-    setGoals((prev) => [...prev, goal]);
-  };
-
-  // Simulated live expense trigger (button or timer)
-  const triggerSimulatedExpense = () => {
-    const template =
-      REALTIME_EVENT_TEMPLATES[Math.floor(Math.random() * REALTIME_EVENT_TEMPLATES.length)];
-    const rawAmt = Math.random() * (template.max - template.min) + template.min;
-    const amount = Math.round(rawAmt * 100) / 100;
-    const isInc = (template as any).isIncome === true;
-
-    const now = new Date();
-    const dateStr = now.toISOString().slice(0, 10);
-    const timeStr = now.toTimeString().slice(0, 5);
-
-    const newSimulatedTx: Transaction = {
-      id: `tx-live-${Date.now()}`,
-      amount,
-      type: isInc ? 'income' : 'expense',
-      category: template.category as any,
-      accountId: template.accountId,
-      merchant: template.merchant,
-      date: dateStr,
-      time: timeStr,
-      note: template.note,
-      status: 'cleared',
-    };
-
-    setLastSimulatedTx(newSimulatedTx);
-    handleAddTransaction(newSimulatedTx);
-  };
-
-  // Real-time automatic background ticker
-  useEffect(() => {
-    if (!isRealtimeActive) return;
-
-    const interval = setInterval(() => {
-      triggerSimulatedExpense();
-    }, 28000); // Trigger a realistic incoming real-time swipe every 28 seconds
-
-    return () => clearInterval(interval);
-  }, [isRealtimeActive]);
 
   return (
-    <div className="min-h-screen bg-[#070b14] text-slate-100 font-sans selection:bg-amber-500/30 selection:text-amber-200">
-      {/* Top Application Navigation */}
+    <div className="min-h-screen bg-[#0b0c16] text-[#e2e8f0] flex flex-col selection:bg-purple-600 selection:text-white relative">
+      
+      {/* Top Navbar */}
       <Header
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        currency={currency}
-        setCurrency={setCurrency}
-        isRealtimeActive={isRealtimeActive}
-        setIsRealtimeActive={setIsRealtimeActive}
-        onOpenAddModal={() => setIsAddModalOpen(true)}
-        onTriggerSimulatedExpense={triggerSimulatedExpense}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        notifications={notifications}
-        showNotifications={showNotifications}
-        setShowNotifications={setShowNotifications}
-        onClearNotifications={() => setNotifications([])}
+        currentTab={currentTab}
+        onSelectTab={setCurrentTab}
+        onOpenPythonModal={() => setIsPythonModalOpen(true)}
+        onOpenVoiceModal={() => setIsVoiceModalOpen(true)}
+        currentUser={currentUser}
+        activeUrl={activeUrl}
       />
 
-      {/* Main View Router */}
-      <main className="transition-all duration-150">
-        {activeTab === 'overview' && (
-          <OverviewDashboard
-            transactions={transactions}
-            accounts={accounts}
-            budgets={budgets}
-            goals={goals}
-            currency={currency}
-            onOpenAddModal={() => setIsAddModalOpen(true)}
-            onTriggerSimulatedExpense={triggerSimulatedExpense}
-            onNavigateToTab={setActiveTab}
-            lastSimulatedTx={lastSimulatedTx}
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-12">
+        
+        {/* Scanner Tab (Matching Screenshot 2 & 1) */}
+        {currentTab === 'scanner' && (
+          <div className="space-y-14">
+            <ScannerHero
+              onAnalyze={handleAnalyze}
+              isLoading={isScanning}
+              loadingStep={loadingStep}
+              initialUrl={activeUrl}
+            />
+
+            {/* Quick Preview of Current Live Audit */}
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                    Active Audit Node Snapshot
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Live analysis result for <span className="text-purple-400 font-mono font-semibold">{currentAudit.domain}</span>
+                  </p>
+                </div>
+                <button
+                  onClick={() => setCurrentTab('dashboard')}
+                  className="text-xs font-bold text-purple-400 hover:text-purple-300 underline underline-offset-4 flex items-center gap-1 cursor-pointer"
+                >
+                  Open Full Dashboard →
+                </button>
+              </div>
+
+              <AuditDashboard
+                audit={currentAudit}
+                onOpenPythonCode={() => setIsPythonModalOpen(true)}
+                onRescan={() => handleAnalyze(currentAudit.url)}
+              />
+            </div>
+
+            {/* 6 Core Pillars from Screenshot 1 */}
+            <FeaturePillars />
+
+            {/* Diagnostics breakdown with refactored code */}
+            <DiagnosticBreakdown
+              diagnostics={currentAudit.diagnostics}
+              domain={currentAudit.domain}
+            />
+
+            {/* Architect Card matching Screenshot 1 */}
+            <ArchitectCard onOpenPython={() => setCurrentTab('python')} />
+          </div>
+        )}
+
+        {/* Full Dashboard Tab */}
+        {currentTab === 'dashboard' && (
+          <div className="space-y-10">
+            <AuditDashboard
+              audit={currentAudit}
+              onOpenPythonCode={() => setIsPythonModalOpen(true)}
+              onRescan={() => handleAnalyze(currentAudit.url)}
+            />
+
+            <DiagnosticBreakdown
+              diagnostics={currentAudit.diagnostics}
+              domain={currentAudit.domain}
+            />
+
+            <FeaturePillars />
+
+            <ArchitectCard onOpenPython={() => setCurrentTab('python')} />
+          </div>
+        )}
+
+        {/* History Tab */}
+        {currentTab === 'history' && (
+          <HistoryView
+            history={history}
+            onSelectAudit={handleSelectHistoryItem}
+            onClearHistory={() => setHistory([])}
           />
         )}
 
-        {activeTab === 'canvas' && (
-          <VisualCashFlowCanvas
-            transactions={transactions}
-            monthlyIncome={monthlyIncome}
-            monthlyExpense={monthlyExpense}
-            currency={currency}
-            onOpenAddModal={() => setIsAddModalOpen(true)}
-            onTriggerSimulatedExpense={triggerSimulatedExpense}
-          />
+        {/* 24/7 Monitor Tab */}
+        {currentTab === 'monitor' && (
+          <MonitorView />
         )}
 
-        {activeTab === 'transactions' && (
-          <TransactionsView
-            transactions={transactions}
-            accounts={accounts}
-            currency={currency}
-            onOpenAddModal={() => setIsAddModalOpen(true)}
-            onDeleteTransaction={handleDeleteTransaction}
-            onImportTransactions={handleImportTransactions}
-            onTriggerSimulatedExpense={triggerSimulatedExpense}
-          />
+        {/* Python Code Engine Tab */}
+        {currentTab === 'python' && (
+          <div className="space-y-6">
+            <PythonEngineModal
+              isOpen={true}
+              isStandaloneTab={true}
+              targetDomain={currentAudit.domain}
+            />
+          </div>
         )}
 
-        {activeTab === 'budgets' && (
-          <BudgetsView
-            budgets={budgets}
-            transactions={transactions}
-            currency={currency}
-            onUpdateBudgetLimit={handleUpdateBudgetLimit}
-            onCreateBudget={handleCreateBudget}
-          />
+        {/* Architect Profile Tab */}
+        {currentTab === 'architect' && (
+          <div className="space-y-8 max-w-5xl mx-auto">
+            <ArchitectCard onOpenPython={() => setCurrentTab('python')} />
+            <FeaturePillars />
+          </div>
         )}
 
-        {activeTab === 'accounts' && (
-          <AccountsView
-            accounts={accounts}
-            goals={goals}
-            currency={currency}
-            onUpdateGoalProgress={handleUpdateGoalProgress}
-            onCreateGoal={handleCreateGoal}
-          />
+        {/* Enterprise Login & Profile Management Tab */}
+        {currentTab === 'auth' && (
+          <div className="py-6">
+            <LoginPage
+              currentUser={currentUser}
+              onLogin={handleLogin}
+              onLogout={handleLogout}
+              onClose={() => setCurrentTab('dashboard')}
+            />
+          </div>
         )}
 
-        {activeTab === 'analytics' && (
-          <AnalyticsView transactions={transactions} currency={currency} />
-        )}
-
-        {activeTab === 'code' && (
-          <CodeStudioView
-            transactions={transactions}
-            accounts={accounts}
-            budgets={budgets}
-            goals={goals}
-            currency={currency}
-            onImportTransactions={handleImportTransactions}
-          />
-        )}
       </main>
 
-      {/* Global Add Transaction Modal */}
-      <AddTransactionModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onAddTransaction={handleAddTransaction}
-        accounts={accounts}
-        currency={currency}
+      {/* Floating Live Voice Assistant Button (Bottom Right) */}
+      <div className="fixed bottom-6 right-6 z-40">
+        <button
+          onClick={() => setIsVoiceModalOpen(true)}
+          className="relative group p-4 rounded-2xl bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 hover:from-pink-500 hover:to-indigo-500 text-white shadow-2xl shadow-purple-600/50 flex items-center gap-3 transition-all hover:scale-105 cursor-pointer border border-pink-400/40"
+          title="Open Dinesh Voice AI Assistant"
+        >
+          {/* Animated pulsing sonar ring */}
+          <span className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 opacity-60 blur-sm group-hover:opacity-100 animate-pulse pointer-events-none" />
+          
+          <div className="relative flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-black/30 flex items-center justify-center">
+              <Mic className="w-4 h-4 text-white animate-pulse" />
+            </div>
+            <div className="text-left hidden sm:block">
+              <div className="text-xs font-black tracking-wide leading-none flex items-center gap-1.5">
+                Dinesh Voice AI
+                <Radio className="w-3 h-3 text-emerald-300 animate-pulse" />
+              </div>
+              <div className="text-[10px] text-pink-200/90 leading-none mt-1">
+                Speak or Tap to Talk
+              </div>
+            </div>
+          </div>
+        </button>
+      </div>
+
+      {/* Global Voice Assistant Modal */}
+      <VoiceAssistantModal
+        isOpen={isVoiceModalOpen}
+        onClose={() => setIsVoiceModalOpen(false)}
+        currentAudit={currentAudit}
+        onRunAudit={handleAnalyze}
+        onNavigateTab={setCurrentTab}
       />
+
+      {/* Global Python Code Studio Modal */}
+      <PythonEngineModal
+        isOpen={isPythonModalOpen}
+        onClose={() => setIsPythonModalOpen(false)}
+        targetDomain={currentAudit.domain}
+      />
+
+      {/* Footer */}
+      <footer className="w-full border-t border-purple-950/40 py-8 bg-[#090a14] mt-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+          <div>
+            <span className="font-bold text-slate-300">Dinesh AI</span> • Enterprise Website Auditor 2026 Edition
+            <span className="mx-2">•</span>
+            <span>Architect: Dinesh Kumar Beura (Bhubaneswar, Odisha)</span>
+          </div>
+          <div className="flex items-center gap-4 text-slate-400">
+            <button onClick={() => setCurrentTab('scanner')} className="hover:text-purple-400 transition-colors">Scanner</button>
+            <button onClick={() => setCurrentTab('dashboard')} className="hover:text-purple-400 transition-colors">Dashboard</button>
+            <button onClick={() => setIsVoiceModalOpen(true)} className="hover:text-pink-400 text-pink-300 transition-colors flex items-center gap-1">
+              <Mic className="w-3 h-3" /> Voice AI
+            </button>
+            <button onClick={() => setCurrentTab('python')} className="hover:text-purple-400 text-amber-400 transition-colors">Python Engine</button>
+            <button onClick={() => setCurrentTab('auth')} className="hover:text-purple-400 transition-colors">
+              {currentUser.isLoggedIn ? 'Account' : 'Sign In'}
+            </button>
+          </div>
+        </div>
+      </footer>
+
     </div>
   );
 }
